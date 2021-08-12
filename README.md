@@ -4,7 +4,7 @@
 
 #### 📒+🖥 I am a student, passionate about information technology.
 
-#### I made a program to draw, in this program I used python, lib tkinter and pyscreenshot
+#### Download for youtube
 
 ##### technologies used:
 ✅ Python
