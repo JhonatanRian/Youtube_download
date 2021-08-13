@@ -1,12 +1,12 @@
 # 👋😃 Hello !!!
 
-![exemple](https://raw.githubusercontent.com/JhonatanRian/Youtube_download/main/exemple/vokoscreenNG-2021-08-11_19-41-23.gif)
+![example](https://raw.githubusercontent.com/JhonatanRian/Youtube_download/main/exemple/vokoscreenNG-2021-08-11_19-41-23.gif)
 
-#### 📒+🖥 I am a student, passionate about information technology.
+#### 📒+🖥 I am a student passionate about Information Technology.
 
-#### Download for youtube
+#### Downloader for Youtube's videos
 
-##### technologies used:
+##### Technologies used:
 ✅ Python
 ✅ tkinter
 ✅ pytube
