@@ -20,7 +20,6 @@ class Downloader:
         self.img_logo: PhotoImage = PhotoImage(file="img/1x/youtube_logo_white.png")
         self.img_file: PhotoImage = PhotoImage(file="img/file.png")
         self.img_download: PhotoImage = PhotoImage(file="img/download.png")
-        self.img_quality: PhotoImage = PhotoImage(file="img/quality.png")
         
         #  Logo frame
         self.frame: Frame = Frame(self.window, bg="#C9020C")
@@ -54,8 +53,6 @@ class Downloader:
         
         self.button_download: Button = Button(self.frame3, image=self.img_download, border=0, width=70, command=self.download)
         self.button_download.pack(side="left")
-        
-        
         
         self.window.mainloop()
     
