@@ -29,6 +29,6 @@ if __name__ == "__main__":
         y = YouTube("https://www.youtube.com/watch?v=0ZQCJIEJA8c")
         resolution = Streams_(y)
         print(resolution.streams_url())
-        resolution.streams.get_by_resolution("480p").download("/home/dev/Área de Trabalho/Youtube_download")
+        #resolution.streams.get_by_resolution("480p").download("/home/dev/Área de Trabalho/Youtube_download")
     except:
         print("Error")
