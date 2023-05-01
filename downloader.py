@@ -1,7 +1,7 @@
 from tkinter import *
 from tkinter import filedialog
 from tkinter.ttk import Combobox
-from pytube import YouTube
+from pytube import YouTube, Stream
 
 
 class Downloader:
@@ -13,8 +13,6 @@ class Downloader:
         self.window.resizable(0, 0)
         self.window.geometry('640x480+300+200')
         
-        #  Attribute representing download options
-        self.resolutions: tuple = ("144p", "360p", "480p", "720p", "1080p", "apenas audio")
         
         #  Attributes that receive the images and icons for the look
         self.img_logo: PhotoImage = PhotoImage(file="img/1x/youtube_logo_white.png")
@@ -40,9 +38,9 @@ class Downloader:
         self.file_button: Button = Button(self.frame2, image=self.img_file, border=0, width=60, command=self.info_file)
         self.file_button.pack(side="left")
         
-        self.resolutions_options: Combobox = Combobox(self.frame2, values=self.resolutions, state="readonly")
-        self.resolutions_options.set("Escolha a resolução")
-        self.resolutions_options.pack(side="left")
+        # self.resolutions_options: Combobox = Combobox(self.frame2, values=self.resolutions, state="readonly")
+        # self.resolutions_options.set("Escolha a resolução")
+        # self.resolutions_options.pack(side="left")
         
         #  Frame where it will show the status of the file
         self.frame3: Frame = Frame(self.window, pady=30)
@@ -62,23 +60,37 @@ class Downloader:
         Info_file receives the download link, gets the location where the video
         will be saved and writes in the download characteristics listbox
         """
+        window: Toplevel = Toplevel()
+        window.title("resolution")
+        window.resizable(0, 0)
+        window.geometry("300x200+300+200")
+
+        frame: Frame = Frame(window, pady=30)
+        frame.pack(fill="x")
+        self.info_video_()
+        self.resolutions_option: Combobox = Combobox(frame, values=self.resolutions, state="readonly",)
+        self.resolutions_option.pack()
+        frame2: Frame = Frame(window, pady=30)
+        frame2.pack(fill="x", side="bottom")
+        ok: Button = Button(frame2, text = "OK", command = window.destroy)
+        ok.pack()
+
         self.info.delete(0, END)
         self.info.insert(1,"»» YouTube Download Init")
         try:
-            self.info_video_()
             self.info.insert(1,55*"=")
-            self.info.insert(1, f"»» Title: {self.video_title}")
-            self.info.insert(2, f"»» Author: {self.video_author}")
-            self.info.insert(3, f"»» length: {self.video_lenght}")
+            self.info.insert(1, f"»» Title: {self.yt.title}")
+            self.info.insert(2, f"»» Author: {self.yt.author}")
+            self.info.insert(3, f"»» length: {self.yt.lenght}")
+            self.info.insert(3, f"»» initial_data: {self.yt.initial_data}")
             self.info.insert(1, 55*"=")
         except:
-            self.msg()
+            # self.msg()
+            print("erro")
             
     def info_video_(self: object):
-        self.video_info: YouTube = YouTube(self.link.get())
-        self.video_author: YouTube = self.video_info.author
-        self.video_title: YouTube = self.video_info.title
-        self.video_lenght: YouTube = self.video_info.length
+        self.yt: YouTube = YouTube(self.link.get())
+        self.resolutions = [StreamYt(stream) for stream in self.yt.streams.filter(progressive=True)] + [StreamYt(stream) for stream in self.yt.streams.filter(only_audio=True)]
         self.file : filedialog = filedialog.askdirectory()
         
     def download(self: object) -> None:
@@ -86,19 +98,11 @@ class Downloader:
         """
         self.info.delete(0, END)
         try:
-            if self.resolutions_options.get() == "audio/mp3":
-                self.video_info.streams.get_audio_only().download(self.file)
-                self.info.insert(1,"»» DOWNLOAD CONCLUDED")
-                self.info.insert(1, f"»» Title: {self.video_title}")
-            elif self.resolutions_options.get() == "Escolha a resolução":
-                self.video_info.streams.get_highest_resolution().download(self.file)
-                self.info.insert(1,"»» DOWNLOAD CONCLUDED")
-                self.info.insert(1, f"»» Title: {self.video_title}")
-            else:
-                self.info.insert(1, f"»» resolution: {self.resolutions_options.get()}")
-                self.video_info.streams.get_by_resolution(self.resolutions_options.get()).download(self.file)
-                self.info.insert(1,"»» DOWNLOAD CONCLUDED")
-                self.info.insert(1, f"»» Title: {self.video_title}")
+            resolution = self.resolutions_option.get()
+            itag = resolution.stream.itag
+            stream = self.yt.strams.get_by_itag(itag)
+            stream.download()
+            self.info.insert(1,"»» Download Conclude")
         except:
             self.info.delete(0, END)
             self.info.insert(1,"»» Something went wrong.")
@@ -117,5 +121,16 @@ class Downloader:
         ok: Button = Button(windom, text = "OK", command = windom.destroy)
         ok.pack()
             
-        
-Downloader()
+class StreamYt:
+    def __init__(self, stream: Stream) -> None:
+        self.__stream: Stream = stream
+
+    @property
+    def stream(self: object) -> Stream:
+        return self.__stream
+
+    def __str__(self: object) -> str:
+        return f" {self.__stream.mime_type} {self.__stream.res}"
+
+if __name__ == "__main__":
+    Downloader()
