@@ -1,60 +1,90 @@
-from tkinter import *
-from tkinter import filedialog
-from tkinter.ttk import Combobox
-from pytube import YouTube, Stream
+
+from tkinter import filedialog, Scrollbar
+from ttkbootstrap import (Button, Window, Entry, Canvas, Label, Progressbar, Combobox,
+                          Frame, VERTICAL, HORIZONTAL, LabelFrame, PhotoImage, Toplevel, Menu,
+                          Scrollbar)
+import ssl
+from utils.get_path_donwload import get_download_folder
+from utils.helpers import DownloadYt, generate_title
+from threading import Thread
+from pytube.exceptions import AgeRestrictedError
+import os
+import sys
+
+ssl._create_default_https_context = ssl._create_stdlib_context
 
 
 class Downloader:
 
     def __init__(self) -> None:
-        #  creating window
-        self.window: Tk = Tk()
+        self.path_download = get_download_folder()
+        self.window: Window = Window(title="My Application", themename="superhero")
         self.window.title("Youtube_Downloader")
         self.window.resizable(0, 0)
+        self.downloads = {}
         self.window.geometry('640x480+300+200')
-        
-        
-        #  Attributes that receive the images and icons for the look
-        self.img_logo: PhotoImage = PhotoImage(file="img/1x/youtube_logo_white.png")
-        self.img_file: PhotoImage = PhotoImage(file="img/file.png")
-        self.img_download: PhotoImage = PhotoImage(file="img/download.png")
-        
-        #  Logo frame
-        self.frame: Frame = Frame(self.window, bg="#C9020C")
-        self.frame.pack(fill="x")
-        self.label_logo: Label = Label(self.frame, image=self.img_logo, bg="#C9020C")
-        self.label_logo.pack()
-        
-        #  Frame that receives features for data entry
-        self.frame2: Frame = Frame(self.window, pady=20)
-        self.frame2.pack()
-        
-        self.label_insert: Label = Label(self.frame2, text=" Insert link: ", font='arial 12')
-        self.label_insert.pack(side='left')
-        
-        self.link: Entry = Entry(self.frame2, font="arial 12", width=30)
-        self.link.pack(side="left")
-        
-        self.file_button: Button = Button(self.frame2, image=self.img_file, border=0, width=60, command=self.info_file)
-        self.file_button.pack(side="left")
-        
-        # self.resolutions_options: Combobox = Combobox(self.frame2, values=self.resolutions, state="readonly")
-        # self.resolutions_options.set("Escolha a resolução")
-        # self.resolutions_options.pack(side="left")
-        
-        #  Frame where it will show the status of the file
-        self.frame3: Frame = Frame(self.window, pady=30)
-        self.frame3.pack()
-        
-        self.info: Listbox = Listbox(self.frame3, relief="flat", width=55, height=40)
-        self.info.pack(side="left")
-        
-        self.button_download: Button = Button(self.frame3, image=self.img_download, border=0, width=70, command=self.download)
-        self.button_download.pack(side="left")
-        
+        self.load_statics()
+        self.load_menu()
+        self.load_frames()
+        self.load_widgets()
+        self.label_path_download = Label(self.frame4, text='Caminho para download: ' + self.path_download)
+        self.label_path_download.pack(side='bottom')
         self.window.mainloop()
     
+    def load_statics(self) -> None:
+        resource_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
+        self.img_logo: PhotoImage = PhotoImage(file=os.path.join(resource_dir, "img/1x/youtube_logo_white.png"))
+
+    def load_frames(self) -> None:
+        self.frame: Frame = Frame(self.window)
+        self.frame.pack(fill="x")
+        self.frame2: Frame = Frame(self.window)
+        self.frame2.pack(pady=20)
+        self.frame3: Frame = Frame(self.window)
+        self.frame3.pack(fill='both', expand=True)
+        self.frame4: Frame = Frame(self.window)
+        self.frame4.pack(pady=2)
     
+    def load_menu(self):
+        self.menu_main = Menu(self.window)
+        self.menu_file = Menu(self.menu_main, tearoff=0)
+
+        self.menu_file.add_command(label="Caminho para download", command=self.get_path_donwload, accelerator="Ctrl+D")
+        self.window.bind("<Control-d>", self.get_path_donwload_event)
+        self.menu_main.add_cascade(label='Arquivo', menu=self.menu_file)
+
+        self.window.config(menu=self.menu_main)
+    
+    def load_widgets(self):
+        self.label_logo: Label = Label(self.frame, image=self.img_logo)
+        self.label_logo.pack()
+
+        self.label_insert: Label = Label(self.frame2, text=" Insert link: ", font='arial 12')
+        self.label_insert.pack(side='left')
+
+        self.link: Entry = Entry(self.frame2, font="arial 12", width=50)
+        self.link.pack(side="left")
+
+        self.button_download: Button = Button(self.frame2, text='Download', width=70, command=self.info_file)
+        self.button_download.pack(side="left", padx=10)
+
+        label_frame_downloads = LabelFrame(self.frame3, bootstyle="light", text="Downloads")
+        label_frame_downloads.pack(fill='both', padx=10, expand=True)
+
+        self.list_donwload_canvas = Canvas(label_frame_downloads)
+        self.list_donwload_canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar = Scrollbar(label_frame_downloads, orient=VERTICAL, command=self.list_donwload_canvas.yview)
+        self.scrollbar.pack(side="right", fill="y", padx=4, pady=2)
+        self.list_donwload_canvas.configure(yscrollcommand=self.scrollbar.set)
+        self.list_donwload_canvas.bind("<Configure>", self.on_canvas_configure)
+        self.inner_frame = Frame(self.list_donwload_canvas, width=610)
+        self.inner_frame.pack(fill="both", expand=True)
+        self.list_donwload_canvas.create_window((0, 0), window=self.inner_frame, anchor="center", tags='inner_frame')
+        self.list_donwload_canvas.update_idletasks()
+        self.list_donwload_canvas.itemconfigure('inner_frame')
+        self.list_donwload_canvas.config(scrollregion=self.list_donwload_canvas.bbox("all"))
+
+
     def info_file(self) -> None:
         """
         Info_file receives the download link, gets the location where the video
@@ -65,72 +95,98 @@ class Downloader:
         window.resizable(0, 0)
         window.geometry("300x200+300+200")
 
-        frame: Frame = Frame(window, pady=30)
-        frame.pack(fill="x")
-        self.info_video_()
-        self.resolutions_option: Combobox = Combobox(frame, values=self.resolutions, state="readonly",)
-        self.resolutions_option.pack()
-        frame2: Frame = Frame(window, pady=30)
-        frame2.pack(fill="x", side="bottom")
-        ok: Button = Button(frame2, text = "OK", command = window.destroy)
-        ok.pack()
+        frame: Frame = Frame(window)
+        frame.pack(fill="x", pady=30)
 
-        self.info.delete(0, END)
-        self.info.insert(1,"»» YouTube Download Init")
+        text = Label(frame, text="Selecione a resolução")
+        text.pack(anchor='center')
         try:
-            self.info.insert(1,55*"=")
-            self.info.insert(1, f"»» Title: {self.yt.title}")
-            self.info.insert(2, f"»» Author: {self.yt.author}")
-            self.info.insert(3, f"»» length: {self.yt.lenght}")
-            self.info.insert(3, f"»» initial_data: {self.yt.initial_data}")
-            self.info.insert(1, 55*"=")
-        except:
-            # self.msg()
-            print("erro")
-            
-    def info_video_(self: object):
-        self.yt: YouTube = YouTube(self.link.get())
-        self.resolutions = [StreamYt(stream) for stream in self.yt.streams.filter(progressive=True)] + [StreamYt(stream) for stream in self.yt.streams.filter(only_audio=True)]
-        self.file : filedialog = filedialog.askdirectory()
-        
-    def download(self: object) -> None:
-        """
-        """
-        self.info.delete(0, END)
-        try:
-            resolution = self.resolutions_option.get()
-            itag = resolution.stream.itag
-            stream = self.yt.strams.get_by_itag(itag)
-            stream.download()
-            self.info.insert(1,"»» Download Conclude")
-        except:
-            self.info.delete(0, END)
-            self.info.insert(1,"»» Something went wrong.")
-            self.info.insert(1,"»» Verify the chosen folder.")
-            self.info.insert(1,"»» Try changing resolutions.")
+            self.yt = DownloadYt(self.link.get())
+            title = generate_title(self.yt.title, list(self.downloads.keys()))
+            self.downloads[title] = self.yt
+            self.resolutions_option: Combobox = Combobox(frame, values=list(self.yt.resolutions.keys()),
+                                                     state="readonly",)
+            self.resolutions_option.pack()
+
+            frame2: Frame = Frame(window)
+            frame2.pack(fill="x", side="bottom", pady=30)
+            ok: Button = Button(frame2, text = "OK", command=lambda: self.capture_resolution(window, title))
+            ok.pack()
+        except AgeRestrictedError:
+            window.destroy()
+            self.msg("Este video tem restrição de idade!\nFaça login")
+            self.msg()
+            return
+        except Exception as err:
+            window.destroy()
+            self.msg()
+
+    def capture_resolution(self, window, title) -> None:
+        resolution = self.resolutions_option.get()
+        self.downloads[title].resolution = self.downloads[title].resolutions.get(resolution)
+        Thread(target=self.download, args=[title]).start()
+        window.destroy()
+
+    def get_path_donwload(self):
+        self.path_download = filedialog.askdirectory()
+        self.label_path_download.configure(text='Caminho para download: ' + self.path_download)
     
-    def msg(self: object) -> None:
+    def get_path_donwload_event(self, event):
+        self.get_path_donwload()
+
+    def download(self, title) -> None:
+        yt = self.downloads.get(title)
+        f = Frame(self.inner_frame)
+        f.pack(pady=3, anchor='center', expand=True)
+        title = Label(f, text=title)
+        title.pack(anchor='center', padx=3)
+        progress = Progressbar(f, orient=HORIZONTAL, length=350,maximum=100, mode='determinate', bootstyle="warning-striped")
+        progress.pack(pady=2, padx=5, anchor='center')
+        self.on_canvas_configure(None)
+        yt.progress_bar = progress
+        yt.yt.register_on_progress_callback(self.on_progress)
+        yt.yt.register_on_complete_callback(self.on_complete)
+        yt.resolution.download(self.path_download)
+
+    def on_complete(self, vid, chunk):
+        yt = self.downloads[vid.title]
+        yt.progress_bar.configure(bootstyle="success-striped")
+
+    def on_progress(self, vid, chunk, bytes_remaining):
+        yt = self.downloads[vid.title]
+        total_size = vid.filesize
+        bytes_downloaded = total_size - bytes_remaining
+        percentage_of_completion = bytes_downloaded / total_size * 100
+        totalsz = (total_size/1024)/1024
+        totalsz = round(totalsz,1)
+        remain = (bytes_remaining / 1024) / 1024
+        remain = round(remain, 1)
+        dwnd = (bytes_downloaded / 1024) / 1024
+        dwnd = round(dwnd, 1)
+        percentage_of_completion = round(percentage_of_completion,2)
+        yt.progress_bar.configure(value=percentage_of_completion)
+        # print(f'Download Progress: {percentage_of_completion}%, Total Size:{totalsz} MB, Downloaded: {dwnd} MB, Remaining:{remain} MB')
+
+
+
+    def msg(self, msg: str = 'Link Inválido!') -> None:
         windom: Toplevel = Toplevel()
         windom.title("ERROR")
         windom.resizable(0, 0)
         windom.geometry("300x200+300+200")
-        
-        texto: Label = Label(windom, text = "The link is not valid", pady = 30)
-        texto.pack()
+        texto: Label = Label(windom, text=msg)
+        texto.pack(pady=30)
         
         ok: Button = Button(windom, text = "OK", command = windom.destroy)
         ok.pack()
-            
-class StreamYt:
-    def __init__(self, stream: Stream) -> None:
-        self.__stream: Stream = stream
 
-    @property
-    def stream(self: object) -> Stream:
-        return self.__stream
+    def on_canvas_configure(self, event):
+        self.list_donwload_canvas.update_idletasks()
+        self.list_donwload_canvas.configure(
+            scrollregion=self.list_donwload_canvas.bbox("all")
+        )
 
-    def __str__(self: object) -> str:
-        return f" {self.__stream.mime_type} {self.__stream.res}"
+
 
 if __name__ == "__main__":
     Downloader()
